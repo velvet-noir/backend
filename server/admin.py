@@ -30,7 +30,7 @@ class ApplicationAdmin(admin.ModelAdmin):
     ordering = ("created_at",)
 
     def get_status_name(self, obj):
-        return f"{obj.status.name}"
+        return obj.get_status_display()
 
     get_status_name.short_description = "Status"
 

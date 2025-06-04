@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.contrib.auth.models import User
 
 
 class Server(models.Model):
@@ -55,12 +56,12 @@ class Application(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     user_creator = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        User,
         on_delete=models.DO_NOTHING,
         related_name="created_applications",
     )
     user_moderator = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        User,
         on_delete=models.DO_NOTHING,
         null=True,
         blank=True,
