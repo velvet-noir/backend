@@ -378,7 +378,7 @@ class ApplicationDeleteServer(APIView):
                 return Response(
                     {
                         "status": "error",
-                        "detail": "Удаление услуги возможно только для заявок со статусом DRAFT."
+                        "detail": "Удаление услуги возможно только для заявок со статусом DRAFT.",
                     },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
@@ -396,4 +396,3 @@ class ApplicationDeleteServer(APIView):
                 {"status": "error", "detail": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-
