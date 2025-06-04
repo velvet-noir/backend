@@ -1,11 +1,14 @@
-<!doctype html>
-<html lang="en" class="h-100">
+<!DOCTYPE html>
+<html lang="ru">
 <head>
-  <meta charset="utf-8">
-    <title>{% block title %}{% endblock %}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Услуги{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
-    Hello ZGU students!
-    {% block content %}{% endblock %}
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
 </body>
 </html>
