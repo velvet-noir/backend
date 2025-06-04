@@ -2,7 +2,7 @@ from django.db import models
 from django.conf import settings
 
 
-class Service(models.Model):
+class Server(models.Model):
     name = models.CharField(max_length=100)
     image = models.CharField(max_length=1024)
     mini_description = models.TextField()
@@ -18,9 +18,9 @@ class Service(models.Model):
         verbose_name_plural = "Услуги"
 
 
-class ServiceSpecification(models.Model):
-    service = models.ForeignKey(
-        Service, on_delete=models.CASCADE, related_name="specifications"
+class ServerSpecification(models.Model):
+    server = models.ForeignKey(
+        Server, on_delete=models.CASCADE, related_name="specifications"
     )
     description = models.TextField()
     processor = models.CharField(max_length=100)
@@ -29,7 +29,7 @@ class ServiceSpecification(models.Model):
     internet_speed = models.CharField(max_length=100)
 
     def __str__(self):
-        return self.service.name
+        return self.server.name
 
     class Meta:
         ordering = ["id"]
@@ -76,18 +76,18 @@ class Application(models.Model):
         ordering = ["created_at"]
 
 
-class ApplicationService(models.Model):
+class ApplicationServer(models.Model):
     application = models.ForeignKey(
-        Application, on_delete=models.CASCADE, related_name="services"
+        Application, on_delete=models.CASCADE, related_name="servers"
     )
-    service = models.ForeignKey(
-        Service, on_delete=models.CASCADE, related_name="applications"
+    server = models.ForeignKey(
+        Server, on_delete=models.CASCADE, related_name="applications"
     )
 
     class Meta:
-        unique_together = ("application", "service")
+        unique_together = ("application", "server")
         verbose_name = "Услуга в заявке"
         verbose_name_plural = "Услуги в заявках"
 
     def __str__(self):
-        return f"Заявка {self.application.id} - Услуга {self.service.name}"
+        return f"Заявка {self.application.id} - Услуга {self.server.name}"
