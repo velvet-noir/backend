@@ -1,11 +1,13 @@
 from django.db import models
-from django.conf import settings
 from django.contrib.auth.models import User
+from django_minio_backend import MinioBackend
 
 
 class Server(models.Model):
     name = models.CharField(max_length=100)
-    image = models.CharField(max_length=1024)
+    image = models.FileField(
+        verbose_name="Object Upload", storage=MinioBackend(bucket_name="mybucket")
+    )
     mini_description = models.TextField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
     is_active = models.BooleanField(default=True)
