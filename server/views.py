@@ -3,6 +3,10 @@ from django.db.models import Q
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+
+
 
 from .models import (
     Application,
@@ -23,6 +27,19 @@ class ServerList(APIView):
     model_class = Server
     serializer_class = ServerSerializer
 
+    @swagger_auto_schema(
+        operation_summary="Получить список всех серверов",
+        responses={200: ServerSerializer(many=True)},
+        manual_parameters=[
+            openapi.Parameter(
+                "query",
+                openapi.IN_QUERY,
+                description="Фильтр по имени или описанию",
+                type=openapi.TYPE_STRING,
+            ),
+        ],
+        tags=["servers/"],
+    )
     def get(self, request, format=None):
         try:
             query = request.query_params.get("query", "")
@@ -41,6 +58,12 @@ class ServerList(APIView):
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    @swagger_auto_schema(
+        operation_summary="Создать новый сервер",
+        request_body=ServerSerializer,
+        responses={201: ServerSerializer},
+        tags=["servers/"],
+    )
     def post(self, request, format=None):
         try:
             serializer = self.serializer_class(data=request.data)
@@ -65,6 +88,11 @@ class ServerDetail(APIView):
     model_class = Server
     serializer_class = ServerDetailSerializer
 
+    @swagger_auto_schema(
+        operation_summary="Получить один сервер по ID с характеристиками",
+        responses={200: ServerDetailSerializer},
+        tags=["servers/{id}/"],
+    )
     def get(self, request, pk, format=None):
         try:
             server = get_object_or_404(self.model_class, pk=pk, is_active=True)
@@ -79,6 +107,12 @@ class ServerDetail(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+    @swagger_auto_schema(
+        operation_summary="Обновить один сервер по ID",
+        request_body=ServerDetailSerializer,
+        responses={200: ServerDetailSerializer},
+        tags=["servers/{id}/"],
+    )
     def put(self, request, pk, format=None):
         try:
             server = get_object_or_404(self.model_class, pk=pk)
@@ -99,6 +133,11 @@ class ServerDetail(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+    @swagger_auto_schema(
+        operation_summary="Удалить(через статус) один сервер по ID",
+        responses={204: "No Content"},
+        tags=["servers/{id}/"],
+    )
     def delete(self, request, pk, format=None):
         try:
             server = get_object_or_404(self.model_class, pk=pk)
@@ -122,6 +161,11 @@ class ServerSpecList(APIView):
     model_class = ServerSpecification
     serializer_class = ServerSpecSerializer
 
+    @swagger_auto_schema(
+        operation_summary="Получить список всех характеристик",
+        responses={200: ServerSpecSerializer(many=True)},
+        tags=["spec/"],
+    )
     def get(self, request, format=None):
         try:
             specs = self.model_class.objects.all().select_related("server")
@@ -145,6 +189,12 @@ class ServerSpecList(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+    @swagger_auto_schema(
+        operation_summary="Добавить новую характеристику",
+        request_body=ServerSpecSerializer,
+        responses={201: ServerSpecSerializer},
+        tags=["spec/"],
+    )
     def post(self, request, format=None):
         try:
             serializer = self.serializer_class(data=request.data)
@@ -169,6 +219,11 @@ class ServerSpecDetail(APIView):
     model_class = ServerSpecification
     serializer_class = ServerSpecSerializer
 
+    @swagger_auto_schema(
+        operation_summary="Получить характеристику по ID",
+        responses={200: ServerSpecSerializer},
+        tags=["spec/{id}/"],
+    )
     def get(self, request, pk, format=None):
         try:
             spec = get_object_or_404(self.model_class, pk=pk)
@@ -183,6 +238,12 @@ class ServerSpecDetail(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+    @swagger_auto_schema(
+        operation_summary="Обновить характеристику по ID",
+        request_body=ServerSpecSerializer,
+        responses={200: ServerSpecSerializer},
+        tags=["spec/{id}/"],
+    )
     def put(self, request, pk, format=None):
         try:
             spec = get_object_or_404(self.model_class, pk=pk)
@@ -203,6 +264,11 @@ class ServerSpecDetail(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+    @swagger_auto_schema(
+        operation_summary="Удалить характеристику по ID",
+        responses={204: "No Content"},
+        tags=["spec/{id}/"],
+    )
     def delete(self, request, pk, format=None):
         try:
             spec = get_object_or_404(self.model_class, pk=pk)
@@ -222,6 +288,19 @@ class ApplicationList(APIView):
     model_class = Application
     serializer_class = ApplicationSerializer
 
+    @swagger_auto_schema(
+        operation_summary="Получить список всех заявок",
+        manual_parameters=[
+            openapi.Parameter(
+                "status",
+                openapi.IN_QUERY,
+                description="Фильтр по имени статуса заявки",
+                type=openapi.TYPE_STRING,
+            ),
+        ],
+        responses={200: ApplicationSerializer(many=True)},
+        tags=["app/"],
+    )
     def get(self, request, format=None):
         try:
             applications = self.model_class.objects.exclude(
@@ -248,6 +327,11 @@ class ApplicationDetail(APIView):
     model_class = Application
     serializer_class = ApplicationSerializer
 
+    @swagger_auto_schema(
+        operation_summary="Получить одну заявку по ID",
+        responses={200: ApplicationSerializer},
+        tags=["app/{id}/"],
+    )
     def get(self, request, pk, format=None):
         try:
             application = get_object_or_404(self.model_class, pk=pk)
@@ -263,6 +347,15 @@ class ApplicationDetail(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+    @swagger_auto_schema(
+        operation_summary="Модератор меняет статус заявки на accepted/completed/rejected",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=["status_id"],
+        ),
+        responses={200: ApplicationSerializer},
+        tags=["app/{id}/"],
+    )
     def put(self, request, pk, format=None):
         try:
             application = get_object_or_404(self.model_class, pk=pk)
@@ -303,6 +396,11 @@ class ApplicationDetail(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+    @swagger_auto_schema(
+        operation_summary="Удалить заявку через смену статсуса на 'deleted(удалена)'",
+        responses={200: ApplicationSerializer},
+        tags=["app/{id}/"],
+    )
     def delete(self, request, pk, format=None):
         try:
             application = get_object_or_404(self.model_class, pk=pk)
@@ -336,6 +434,11 @@ class ApplicationFormed(APIView):
     model_class = Application
     serializer_class = ApplicationSerializer
 
+    @swagger_auto_schema(
+        operation_summary="Установить для заявки статус 'formed(сформирована)'",
+        responses={200: ApplicationSerializer},
+        tags=["app/{id}/formed"],
+    )
     def put(self, request, pk, format=None):
         try:
             application = get_object_or_404(self.model_class, pk=pk)
@@ -366,6 +469,11 @@ class ApplicationFormed(APIView):
 
 
 class ApplicationDeleteServer(APIView):
+    @swagger_auto_schema(
+        operation_summary="Удаление сервера по ID из заявки",
+        responses={204: "No Content"},
+        tags=["app/{id}/del/{id}/"],
+    )
     def delete(self, request, app_id, server_id, format=None):
         try:
             app_server = get_object_or_404(
@@ -378,7 +486,7 @@ class ApplicationDeleteServer(APIView):
                 return Response(
                     {
                         "status": "error",
-                        "detail": "Удаление услуги возможно только для заявок со статусом DRAFT.",
+                        "detail": "Удаление сервера возможно только для заявок со статусом DRAFT.",
                     },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
@@ -387,7 +495,7 @@ class ApplicationDeleteServer(APIView):
             return Response(
                 {
                     "status": "success",
-                    "detail": "The service was successfully removed from the application.",
+                    "detail": "The server was successfully removed from the application.",
                 },
                 status=status.HTTP_204_NO_CONTENT,
             )
