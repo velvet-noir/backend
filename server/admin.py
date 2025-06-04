@@ -1,6 +1,11 @@
 from django.contrib import admin
-
-from .models import Application, ApplicationServer, Server, ServerSpecification
+from django.contrib.auth.admin import UserAdmin
+from .models import (
+    Application,
+    ApplicationServer,
+    Server,
+    ServerSpecification,
+)
 
 
 class ServiceAdmin(admin.ModelAdmin):

@@ -53,6 +53,15 @@ MINIO_USE_HTTPS = False
 MINIO_PUBLIC_BUCKETS = ["mybucket"]
 MINIO_STORAGE_AUTO_CREATE_MEDIA_BUCKET = True
 
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.BasicAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+}
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

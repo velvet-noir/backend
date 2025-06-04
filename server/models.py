@@ -1,6 +1,12 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django_minio_backend import MinioBackend
+from django.conf import settings
+from django.contrib.auth.models import (
+    AbstractBaseUser,
+    BaseUserManager,
+    PermissionsMixin,
+)
 
 
 class Server(models.Model):

@@ -1,11 +1,13 @@
 from rest_framework.views import APIView
 from django.db.models import Q
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import viewsets, status, permissions
 from django.shortcuts import get_object_or_404
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-
+from django.contrib.auth.models import User
+from django.contrib.auth import authenticate, login, logout
+from rest_framework.parsers import JSONParser
 
 
 from .models import (
@@ -17,9 +19,11 @@ from .models import (
 )
 from .serializers import (
     ApplicationSerializer,
+    LoginSerializer,
     ServerDetailSerializer,
     ServerSerializer,
     ServerSpecSerializer,
+    UserSerializer,
 )
 
 
@@ -504,3 +508,51 @@ class ApplicationDeleteServer(APIView):
                 {"status": "error", "detail": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        response_serializer = self.get_serializer(user)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+
+class LoginView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    @swagger_auto_schema(
+        operation_summary="Вход пользователя (логин)",
+        request_body=LoginSerializer,
+        responses={200: "Успешный вход", 401: "Неверные учетные данные"},
+        tags=["auth"],
+    )
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = authenticate(
+            request,
+            username=serializer.validated_data["username"],
+            password=serializer.validated_data["password"],
+        )
+        if user is not None:
+            login(request, user)
+            return Response({"detail": "Successfully logged in."})
+        return Response(
+            {"detail": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED
+        )
+
+
+class LogoutView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        logout(request)
+        return Response(
+            {"detail": "Successfully logged out."}, status=status.HTTP_200_OK
+        )

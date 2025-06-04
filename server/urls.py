@@ -1,5 +1,10 @@
-from django.urls import path
+from django.urls import include, path
 from server import views
+from rest_framework import routers
+
+
+router = routers.DefaultRouter()
+router.register(r"user", views.UserViewSet, basename="user")
 
 urlpatterns = [
     path(r"servers/", views.ServerList.as_view(), name="servers-list"),
@@ -26,4 +31,7 @@ urlpatterns = [
         views.ApplicationDeleteServer.as_view(),
         name="remove-service-from-applic",
     ),
+    path("", include(router.urls)),
+    path("login/", views.LoginView.as_view(), name="login"),
+    path("logout/", views.LogoutView.as_view(), name="logout"),
 ]
