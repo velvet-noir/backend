@@ -2,9 +2,11 @@ from django.contrib import admin
 
 from .models import Application, ApplicationServer, Server, ServerSpecification
 
+
 class ServiceAdmin(admin.ModelAdmin):
     list_display = ("name", "image", "price", "is_active")
     ordering = ("id",)
+
 
 class ServiceSpecificationAdmin(admin.ModelAdmin):
     list_display = ("get_service_name", "processor", "ram", "disk", "internet_speed")
@@ -14,6 +16,7 @@ class ServiceSpecificationAdmin(admin.ModelAdmin):
         return f"Характеристика: {obj.server.name}"
 
     get_service_name.short_description = "Server"
+
 
 class ApplicationAdmin(admin.ModelAdmin):
     list_display = (
@@ -30,6 +33,7 @@ class ApplicationAdmin(admin.ModelAdmin):
         return f"{obj.status.name}"
 
     get_status_name.short_description = "Status"
+
 
 class ApplicationServerAdmin(admin.ModelAdmin):
     list_display = ("id", "application", "get_service_name")
