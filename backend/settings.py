@@ -63,6 +63,9 @@ REST_FRAMEWORK = {
     ],
 }
 
+REDIS_HOST = '127.0.0.1'
+REDIS_PORT = 6379
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",

@@ -1,3 +1,4 @@
+import datetime
 from rest_framework.views import APIView
 from django.db.models import Q
 from rest_framework.response import Response
@@ -8,6 +9,7 @@ from drf_yasg import openapi
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from rest_framework.permissions import AllowAny, IsAuthenticated, BasePermission
+from .utils import redis_client
 
 from .models import (
     Application,
@@ -603,6 +605,30 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
 
+# class LoginView(APIView):
+#     permission_classes = [AllowAny]
+
+#     @swagger_auto_schema(
+#         operation_summary="Вход пользователя (логин)",
+#         request_body=LoginSerializer,
+#         responses={200: "Успешный вход", 401: "Неверные учетные данные"},
+#         tags=["auth"],
+#     )
+#     def post(self, request):
+#         serializer = LoginSerializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+
+#         user = authenticate(
+#             request,
+#             username=serializer.validated_data["username"],
+#             password=serializer.validated_data["password"],
+#         )
+#         if user is not None:
+#             login(request, user)
+#             return Response({"detail": "Successfully logged in."})
+#         return Response(
+#             {"detail": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED
+#         )
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
@@ -623,6 +649,11 @@ class LoginView(APIView):
         )
         if user is not None:
             login(request, user)
+
+            log_key = f"user_login:{user.username}"
+            timestamp = datetime.datetime.now().isoformat()
+            redis_client.lpush(log_key, timestamp)
+            redis_client.ltrim(log_key, 0, 99)
             return Response({"detail": "Successfully logged in."})
         return Response(
             {"detail": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED
