@@ -1,14 +1,13 @@
 from rest_framework.views import APIView
 from django.db.models import Q
 from rest_framework.response import Response
-from rest_framework import viewsets, status, permissions
+from rest_framework import viewsets, status
 from django.shortcuts import get_object_or_404
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
-from rest_framework.parsers import JSONParser
-
+from rest_framework.permissions import AllowAny, IsAuthenticated, BasePermission
 
 from .models import (
     Application,
@@ -27,9 +26,23 @@ from .serializers import (
 )
 
 
+class IsModerator(BasePermission):
+    def has_permission(self, request, view):
+        return (
+            request.user
+            and request.user.is_authenticated
+            and (request.user.is_staff or request.user.is_superuser)
+        )
+
+
 class ServerList(APIView):
     model_class = Server
     serializer_class = ServerSerializer
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsModerator()]
 
     @swagger_auto_schema(
         operation_summary="Получить список всех серверов",
@@ -91,6 +104,11 @@ class ServerList(APIView):
 class ServerDetail(APIView):
     model_class = Server
     serializer_class = ServerDetailSerializer
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsModerator()]
 
     @swagger_auto_schema(
         operation_summary="Получить один сервер по ID с характеристиками",
@@ -165,6 +183,11 @@ class ServerSpecList(APIView):
     model_class = ServerSpecification
     serializer_class = ServerSpecSerializer
 
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsModerator()]
+
     @swagger_auto_schema(
         operation_summary="Получить список всех характеристик",
         responses={200: ServerSpecSerializer(many=True)},
@@ -222,6 +245,11 @@ class ServerSpecList(APIView):
 class ServerSpecDetail(APIView):
     model_class = ServerSpecification
     serializer_class = ServerSpecSerializer
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [AllowAny()]
+        return [IsModerator()]
 
     @swagger_auto_schema(
         operation_summary="Получить характеристику по ID",
@@ -292,6 +320,8 @@ class ApplicationList(APIView):
     model_class = Application
     serializer_class = ApplicationSerializer
 
+    permission_classes = [IsModerator]  # Только модераторы
+
     @swagger_auto_schema(
         operation_summary="Получить список всех заявок",
         manual_parameters=[
@@ -331,6 +361,18 @@ class ApplicationDetail(APIView):
     model_class = Application
     serializer_class = ApplicationSerializer
 
+    def get_permissions(self):
+        if self.request.method == "GET":
+            if self.request.user.is_staff or self.request.user.is_superuser:
+                return [IsAuthenticated()]
+            else:
+                return [IsAuthenticated()]
+        elif self.request.method == "PUT":
+            return [IsModerator()]
+        elif self.request.method == "DELETE":
+            return [IsAuthenticated()]
+        return super().get_permissions()
+
     @swagger_auto_schema(
         operation_summary="Получить одну заявку по ID",
         responses={200: ApplicationSerializer},
@@ -339,6 +381,15 @@ class ApplicationDetail(APIView):
     def get(self, request, pk, format=None):
         try:
             application = get_object_or_404(self.model_class, pk=pk)
+
+            if not (request.user.is_staff or request.user.is_superuser):
+                if application.user_creator != request.user:
+                    return Response(
+                        {
+                            "detail": "You do not have permission to view this application."
+                        },
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
 
             serializer = self.serializer_class(application)
             return Response(
@@ -355,7 +406,8 @@ class ApplicationDetail(APIView):
         operation_summary="Модератор меняет статус заявки на accepted/completed/rejected",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
-            required=["status_id"],
+            required=["status"],
+            properties={"status": openapi.Schema(type=openapi.TYPE_STRING)},
         ),
         responses={200: ApplicationSerializer},
         tags=["app/{id}/"],
@@ -363,6 +415,7 @@ class ApplicationDetail(APIView):
     def put(self, request, pk, format=None):
         try:
             application = get_object_or_404(self.model_class, pk=pk)
+
             new_status = request.data.get("status")
 
             if new_status not in [
@@ -401,13 +454,21 @@ class ApplicationDetail(APIView):
             )
 
     @swagger_auto_schema(
-        operation_summary="Удалить заявку через смену статсуса на 'deleted(удалена)'",
+        operation_summary="Удалить заявку через смену статуса на 'deleted(удалена)'",
         responses={200: ApplicationSerializer},
         tags=["app/{id}/"],
     )
     def delete(self, request, pk, format=None):
         try:
             application = get_object_or_404(self.model_class, pk=pk)
+
+            if application.user_creator != request.user:
+                return Response(
+                    {
+                        "detail": "You do not have permission to delete this application."
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
 
             if application.status == ApplicationStatus.DELETED:
                 return Response(
@@ -437,6 +498,7 @@ class ApplicationDetail(APIView):
 class ApplicationFormed(APIView):
     model_class = Application
     serializer_class = ApplicationSerializer
+    permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
         operation_summary="Установить для заявки статус 'formed(сформирована)'",
@@ -446,6 +508,14 @@ class ApplicationFormed(APIView):
     def put(self, request, pk, format=None):
         try:
             application = get_object_or_404(self.model_class, pk=pk)
+
+            if application.user_creator != request.user:
+                return Response(
+                    {
+                        "detail": "You do not have permission to change the status of this application."
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
 
             if application.status == ApplicationStatus.FORMED:
                 return Response(
@@ -473,6 +543,8 @@ class ApplicationFormed(APIView):
 
 
 class ApplicationDeleteServer(APIView):
+    permission_classes = [IsAuthenticated]
+
     @swagger_auto_schema(
         operation_summary="Удаление сервера по ID из заявки",
         responses={204: "No Content"},
@@ -485,6 +557,15 @@ class ApplicationDeleteServer(APIView):
                 application_id=app_id,
                 server_id=server_id,
             )
+
+            if app_server.application.user_creator != request.user:
+                return Response(
+                    {
+                        "status": "error",
+                        "detail": "You do not have permission to modify this application.",
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
 
             if app_server.application.status != ApplicationStatus.DRAFT:
                 return Response(
@@ -523,7 +604,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
 
 class LoginView(APIView):
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [AllowAny]
 
     @swagger_auto_schema(
         operation_summary="Вход пользователя (логин)",
@@ -549,10 +630,96 @@ class LoginView(APIView):
 
 
 class LogoutView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
         logout(request)
         return Response(
             {"detail": "Successfully logged out."}, status=status.HTTP_200_OK
+        )
+
+
+class CurrentUserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        return Response(
+            {
+                "is_staff": user.is_staff,
+            }
+        )
+
+
+class DraftApplicationServerView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="Добавить услугу (Server) в черновик заявки (создаст заявку, если её нет)",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=["server_id"],
+            properties={
+                "server_id": openapi.Schema(type=openapi.TYPE_INTEGER),
+            },
+        ),
+        responses={200: "Application с добавленной услугой"},
+        tags=["applic/draft/"],
+    )
+    def post(self, request):
+        user = request.user
+        server_id = request.data.get("server_id")
+
+        if not server_id:
+            return Response(
+                {"detail": "server_id is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            server = Server.objects.get(pk=server_id, is_active=True)
+        except Server.DoesNotExist:
+            return Response(
+                {"detail": "Service not found or inactive"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        application, created = Application.objects.get_or_create(
+            user_creator=user,
+            status=ApplicationStatus.DRAFT,
+        )
+
+        if ApplicationServer.objects.filter(application=application, server=server).exists():
+            return Response(
+                {"detail": "Service already added to draft application"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        ApplicationServer.objects.create(application=application, server=server)
+
+        serializer = ApplicationSerializer(application)
+        return Response(
+            {"status": "success", "data": serializer.data},
+            status=status.HTTP_200_OK,
+        )
+    
+    @swagger_auto_schema(
+        operation_summary="Получить черновую заявку текущего пользователя, если есть",
+        responses={200: ApplicationSerializer},
+        tags=["applic/draft/"],
+    )
+    def get(self, request):
+        user = request.user
+
+        application = Application.objects.filter(
+            user_creator=user, status=ApplicationStatus.DRAFT
+        ).first()
+
+        if not application:
+            return Response(
+                {"detail": "No draft application found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = ApplicationSerializer(application)
+        return Response(
+            {"status": "success", "data": serializer.data}, status=status.HTTP_200_OK
         )

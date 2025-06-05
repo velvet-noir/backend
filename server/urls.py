@@ -34,4 +34,10 @@ urlpatterns = [
     path("", include(router.urls)),
     path("login/", views.LoginView.as_view(), name="login"),
     path("logout/", views.LogoutView.as_view(), name="logout"),
+    path("user-me/", views.CurrentUserView.as_view(), name="current-user"),
+    path(
+        "applic/draft/",
+        views.DraftApplicationServerView.as_view(),
+        name="draft-application-server-add",
+    ),
 ]
